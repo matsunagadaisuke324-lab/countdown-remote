@@ -11,6 +11,7 @@ import {getFirestore,doc,getDoc,getDocFromServer,setDoc,onSnapshot,runTransactio
 const $=id=>document.getElementById(id), DEFAULT={mode:'down',duration:300000,elapsed:0,running:false,startedAt:0,revision:0,laps:[]};
 let db=null,auth=null,unsub=null,roomId='',state={...DEFAULT},lastSync=0,connected=false,screen='home',busy=false,clockOffset=0;
 let polling=false,activeGeneration=0,lastSource='—',lastRevision=-1,lastPollError='';
+let pendingAction=null,lastSendMs=null,lastActionResult='—';
 const firebaseConfig = {
   apiKey: 'AIzaSyCY0GtNW8gOOkva3VjnRlHKH4y5xwYGvFk',
   authDomain: 'countdown-remote.firebaseapp.com',
@@ -27,7 +28,7 @@ const elapsed=()=>Math.max(0,(state.elapsed||0)+(state.running?Math.max(0,Date.n
 const remaining=()=>state.duration-elapsed();
 const isOver=()=>remaining()<0;
 const value=()=>isOver()?'+'+format(-remaining()):format(remaining());
-function render(){const date=new Date();$('nowClock').textContent=date.toLocaleTimeString('ja-JP',{hour12:false});const str=value();$('bigClock').textContent=str;$('controlClock').textContent=str;$('display').classList.toggle('overtime',isOver());$('timerPanel').classList.toggle('control-over',isOver());$('controlOver').classList.toggle('hidden',!isOver());$('modeLabel').textContent=isOver()?'⚠ TIME OVER ⚠':'COUNTDOWN';$('controlMode').textContent=isOver()?'⚠ TIME OVER ⚠':'COUNTDOWN';const diag=`${roomId||'ルームなし'} / rev ${lastRevision} / ${lastSource} / 最終受信 ${lastSync?Math.floor((Date.now()-lastSync)/1000)+'秒前':'なし'}${lastPollError?' / '+lastPollError:''}`;$('displayDiag').textContent=diag;$('controlDiag').textContent=diag;$('displayNote').textContent=!connected?'⚠ 通信未接続・最終状態で表示中':isOver()?'⚠ 制限時間超過 ⚠':state.running?'COUNTING DOWN':'STOPPED / READY';if(screen==='control'){$('start').disabled=!connected||busy||state.running;$('stop').disabled=!connected||busy||!state.running;$('reset').disabled=!connected||busy;for(const btn of document.querySelectorAll('.preset')){btn.classList.toggle('active',btn.id==='customPreset'?![300000,600000,900000].includes(state.duration):Number(btn.dataset.duration)===state.duration);btn.disabled=!connected||busy}}}
+function render(){const date=new Date();$('nowClock').textContent=date.toLocaleTimeString('ja-JP',{hour12:false});const str=value();$('bigClock').textContent=str;$('controlClock').textContent=str;$('display').classList.toggle('overtime',isOver());$('timerPanel').classList.toggle('control-over',isOver());$('controlOver').classList.toggle('hidden',!isOver());$('modeLabel').textContent=isOver()?'⚠ TIME OVER ⚠':'COUNTDOWN';$('controlMode').textContent=isOver()?'⚠ TIME OVER ⚠':'COUNTDOWN';const diag=`v4 / ${roomId||'ルームなし'} / rev ${lastRevision}${pendingAction?' (操作反映中)':''} / ${lastSource} / 最終受信 ${lastSync?Math.floor((Date.now()-lastSync)/1000)+'秒前':'なし'} / 送信 ${lastSendMs===null?'—':lastSendMs+'ms'} / ${lastActionResult}${lastPollError?' / '+lastPollError:''}`;$('displayDiag').textContent=diag;$('controlDiag').textContent=diag;$('displayNote').textContent=!connected?'⚠ 通信未接続・最終状態で表示中':isOver()?'⚠ 制限時間超過 ⚠':state.running?'COUNTING DOWN':'STOPPED / READY';if(screen==='control'){$('start').disabled=!connected||busy||state.running;$('stop').disabled=!connected||busy||!state.running;$('reset').disabled=!connected||busy;for(const btn of document.querySelectorAll('.preset')){btn.classList.toggle('active',btn.id==='customPreset'?![300000,600000,900000].includes(state.duration):Number(btn.dataset.duration)===state.duration);btn.disabled=!connected||busy}}}
 setInterval(render,40);document.addEventListener('visibilitychange',render);
 async function init(){
   try {
@@ -52,8 +53,11 @@ function acceptSnapshot(snap, source, generation){
   const data=snap.data();
   const revision=Number(data.revision||0);
   if(revision<lastRevision) return;
+  // Ignore pre-commit snapshots while the local control is showing a pending action.
+  if(pendingAction && revision<=pendingAction.baseRevision) return;
   // Do not overwrite an already confirmed server state with a cached snapshot.
   if(revision===lastRevision && snap.metadata?.fromCache) return;
+  if(pendingAction && revision>pendingAction.baseRevision) pendingAction=null;
   state={...DEFAULT,...data};
   lastRevision=revision;
   lastSync=Date.now();
@@ -67,7 +71,7 @@ async function connect(id){
   if(unsub){unsub();unsub=null;}
   activeGeneration++;
   const generation=activeGeneration;
-  roomId=id;connected=false;lastRevision=-1;lastSync=0;lastSource='—';
+  roomId=id;connected=false;lastRevision=-1;lastSync=0;lastSource='—';pendingAction=null;
   status('接続中');
   localStorage.setItem('dualClockRoom',id);
   $('roomName').textContent=id;
@@ -116,6 +120,67 @@ for(const btn of document.querySelectorAll('.preset[data-duration]'))btn.onclick
 $('customPreset').onclick=()=>{$('customBox').classList.toggle('hidden');$('customError').textContent=''};
 $('applyCustom').onclick=()=>{const m=$('customMinutes').value.trim(),sec=$('customSeconds').value.trim();if(!/^\d+$/.test(m)||!/^\d+$/.test(sec)||Number(m)>999||Number(sec)>59||(Number(m)===0&&Number(sec)===0)){$('customError').textContent='分は0〜999、秒は0〜59、合計1秒以上にしてください。';return}const duration=(Number(m)*60+Number(sec))*1000;if(state.running&&!confirm('カスタム時間に変更すると計測をリセットします。よろしいですか？'))return;$('customError').textContent='';act('duration',duration)};
 for(const id of ['start','stop','reset'])$(id).onclick=()=>{if(id==='reset'&&!confirm('計測をリセットしますか？'))return;act(id)};
-async function act(type,arg){if(!db||!roomId||!connected||busy){$('actionMsg').textContent='通信未接続です。操作は送信されていません。';return}busy=true;$('actionMsg').textContent='送信中…';render();try{const ref=doc(db,'rooms',roomId);await runTransaction(db,async tx=>{const snap=await tx.get(ref);if(!snap.exists())throw Error('ルームがありません');const d={...DEFAULT,...snap.data()};const now=Date.now();const e=Math.max(0,d.elapsed+(d.running?now-d.startedAt:0));const next={};switch(type){case 'start':if(!d.running){next.running=true;next.startedAt=now;next.elapsed=e}break;case 'stop':if(d.running){next.running=false;next.elapsed=e;next.startedAt=0}break;case 'reset':next.running=false;next.elapsed=0;next.startedAt=0;next.laps=[];break;case 'duration':if(!Number.isInteger(arg)||arg<1000||arg>59999000||arg%1000!==0)throw Error('設定できる時間は1秒〜999分59秒です');next.duration=arg;next.running=false;next.elapsed=0;next.startedAt=0;next.laps=[];break;}tx.update(ref,{...next,revision:(d.revision||0)+1,updatedAt:serverTimestamp()})});$('actionMsg').textContent='送信完了';}catch(e){$('actionMsg').textContent='送信失敗（操作未確定）：'+e.message}finally{busy=false;render()}}
-if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js?v=3').catch(()=>{});init().then(ok=>{if(ok&&$('room').value)$('join').click()})
+// Build the same next state for local immediate rendering and Firestore transaction.
+function nextTimerState(d,type,arg,now){
+  const e=Math.max(0,Number(d.elapsed||0)+(d.running?Math.max(0,now-Number(d.startedAt||now)):0));
+  const next={};
+  switch(type){
+    case 'start': if(!d.running){next.running=true;next.startedAt=now;next.elapsed=e;} break;
+    case 'stop': if(d.running){next.running=false;next.elapsed=e;next.startedAt=0;} break;
+    case 'reset': next.running=false;next.elapsed=0;next.startedAt=0;next.laps=[];break;
+    case 'duration':
+      if(!Number.isInteger(arg)||arg<1000||arg>59999000||arg%1000!==0)throw Error('設定できる時間は1秒〜999分59秒です');
+      next.duration=arg;next.running=false;next.elapsed=0;next.startedAt=0;next.laps=[];break;
+    default:throw Error('不明な操作');
+  }
+  return next;
+}
+async function act(type,arg){
+  if(!db||!roomId||!connected||busy){$('actionMsg').textContent='通信未接続です。操作は送信されていません。';return;}
+  const generation=activeGeneration, targetRoom=roomId, before={...state};
+  const baseRevision=Math.max(lastRevision,Number(state.revision||0));
+  const t0=performance.now();
+  try{
+    const optimistic=nextTimerState(before,type,arg,Date.now()+clockOffset);
+    busy=true;
+    pendingAction={baseRevision,generation,targetRoom};
+    state={...before,...optimistic,revision:baseRevision+1};
+    lastSource='操作端末の即時反映（送信中）';
+    lastActionResult='送信中';
+    $('actionMsg').textContent='送信中…（画面には即時反映）';
+    render();
+    const ref=doc(db,'rooms',targetRoom);
+    const confirmed=await runTransaction(db,async tx=>{
+      const snap=await tx.get(ref);
+      if(!snap.exists())throw Error('ルームがありません');
+      const current={...DEFAULT,...snap.data()};
+      const changes=nextTimerState(current,type,arg,Date.now()+clockOffset);
+      const revision=Number(current.revision||0)+1;
+      tx.update(ref,{...changes,revision,updatedAt:serverTimestamp()});
+      return {...current,...changes,revision};
+    });
+    if(generation!==activeGeneration||targetRoom!==roomId)return;
+    lastSendMs=Math.round(performance.now()-t0);
+    lastActionResult='送信成功';
+    // Commit response is authoritative for this control, without waiting for onSnapshot.
+    if(Number(confirmed.revision)>=lastRevision){
+      state={...confirmed};lastRevision=Number(confirmed.revision);
+      lastSync=Date.now();lastSource='送信成功・ローカル確定';
+    }
+    pendingAction=null;
+    $('actionMsg').textContent=`送信完了（${lastSendMs}ms）`;
+  }catch(e){
+    if(generation!==activeGeneration||targetRoom!==roomId)return;
+    lastSendMs=Math.round(performance.now()-t0);
+    lastActionResult='送信失敗';
+    pendingAction=null;
+    // The optimistic state was not committed; restore the previous state, then resync.
+    if(lastRevision<=baseRevision){state=before;lastSource='送信失敗・操作取消';}
+    $('actionMsg').textContent='送信失敗（操作を取消）：'+e.message;
+    refreshFromServer(generation);
+  }finally{
+    if(generation===activeGeneration){busy=false;render();}
+  }
+}
+if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js?v=4').catch(()=>{});init().then(ok=>{if(ok&&$('room').value)$('join').click()})
 </script></body></html>
