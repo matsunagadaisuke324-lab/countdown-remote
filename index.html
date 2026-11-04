@@ -2,14 +2,15 @@
 :root{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;color:#f5f8ff;background:#08152b}*{box-sizing:border-box}body{margin:0;min-height:100dvh}button,input,select{font:inherit}button{border:0;border-radius:12px;padding:14px 18px;background:#23446e;color:white;font-weight:700;cursor:pointer}button:disabled{opacity:.45}button.primary{background:#2c8fbd}button.danger{background:#aa4656}input,select{padding:12px;background:#132b4a;color:white;border:1px solid #506785;border-radius:9px;max-width:100%}main{max-width:780px;margin:auto;padding:18px}.top{display:flex;align-items:center;justify-content:space-between;gap:10px}.muted{color:#a4bad2}.panel{background:#102440;border:1px solid #284466;border-radius:18px;padding:18px;margin:16px 0}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.stack{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.hidden{display:none!important}.status{font-size:.85rem;padding:7px 11px;border-radius:20px;background:#36465c}.good{background:#185c4d}.bad{background:#794335}.clock{text-align:center;font-variant-numeric:tabular-nums;font-feature-settings:'tnum';font-weight:650;letter-spacing:.025em;white-space:nowrap}.label{text-align:center;color:#a5c1dc;font-weight:650;letter-spacing:.15em}.display{width:100vw;height:100dvh;max-width:none;padding:1.5vh 3vw;display:flex;flex-direction:column;justify-content:space-around}.display .time{font-size:clamp(36px,9vh,105px)}.display .timer{font-size:clamp(40px,12vh,140px)}.display .segment{display:flex;flex-direction:column;justify-content:center;flex:1;min-height:0}.display .segment+.segment{border-top:1px solid #36516f}.display .label{font-size:clamp(12px,2.7vh,24px)}.display .top{position:absolute;right:12px;top:8px;z-index:2}.display .status{font-size:11px}.display .smallnote{text-align:center;font-size:12px;color:#c6b18b}.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}.actions button{min-height:66px;font-size:1.15rem}.laps{max-height:190px;overflow:auto}.pill{border:1px solid #476184;border-radius:12px;padding:8px 12px}.note{line-height:1.6;font-size:.9rem}.countdown-input{width:78px;text-align:center}.wide{width:100%}@media(orientation:landscape){.display .time{font-size:clamp(34px,11vh,100px)}.display .timer{font-size:clamp(42px,17vh,160px)}.display .segment{gap:1vh}.display .label{font-size:clamp(11px,3vh,19px)}}@media(max-width:500px){.panel{padding:13px}.stack{gap:7px}main{padding:12px}}
 .preset-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px}.preset{font-size:1.2rem;min-height:64px}.preset.active{background:#1676b5;outline:2px solid #8bdbff}.display.overtime{background:#6d0711;animation:alertPulse 1.15s infinite alternate}.display.overtime .timer{color:#fff;text-shadow:0 0 18px #ff7680}.display.overtime .smallnote{color:#fff;font-weight:900;font-size:clamp(16px,4vh,28px)}.display.overtime .segment+.segment{border-color:#ff7788}.display.overtime .label{color:#ffd7dc}@keyframes alertPulse{from{background:#57050b}to{background:#b30b1c}}@media(prefers-reduced-motion:reduce){.display.overtime{animation:none}}.control-over{background:#7e0d1b;border-color:#ff6b7b}.control-over .clock{color:#fff}.notice{color:#ffb2b9;font-weight:800;text-align:center;font-size:1.2rem}.timer{font-variant-numeric:tabular-nums}@media(orientation:landscape){.display .timer{font-size:clamp(40px,18vh,160px)}}
 </style></head><body><main id="home"><div class="top"><h2>COUNTDOWN REMOTE</h2><span id="net" class="status">未接続</span></div><p class="muted">iPhone 2台でカウントダウンを遠隔操作</p><section class="panel"><h3>① ルームに接続</h3><p class="muted note">操作端末で「新規ルーム作成」し、同じIDを表示端末で入力してください。</p><div class="stack"><input id="room" placeholder="ルームID（例 ABC123）" maxlength="12" autocomplete="off" style="text-transform:uppercase;flex:1;min-width:160px"><button id="create" class="primary">新規ルーム作成</button><button id="join">接続</button></div><p id="roomMsg" class="muted"></p></section><section class="panel"><h3>② 画面を選択</h3><div class="grid"><button id="goDisplay" class="primary">表示用 iPhone①</button><button id="goControl">操作用 iPhone②</button></div><p class="note muted">表示用は横向きにしてください。iOSではWebページから画面回転を強制できません。</p></section></main>
-<main id="display" class="display hidden"><div class="top"><span id="displayStatus" class="status">未接続</span><button id="exitDisplay" style="padding:5px 9px;font-size:11px">設定へ</button></div><div class="segment"><div class="label">現在時刻</div><div class="clock time" id="nowClock">--:--:--</div></div><div class="segment"><div class="label" id="modeLabel">COUNTDOWN</div><div class="clock timer" id="bigClock">05:00</div><div class="smallnote" id="displayNote">ルーム未接続</div></div></main>
-<main id="control" class="hidden"><div class="top"><h2>CONTROL</h2><span id="controlStatus" class="status">未接続</span></div><p class="muted">ルーム：<strong id="roomName">—</strong></p><section class="panel" id="timerPanel"><div class="label" id="controlMode">COUNTDOWN</div><div class="clock" id="controlClock" style="font-size:clamp(38px,11vw,65px);margin:15px 0">05:00</div><div class="notice hidden" id="controlOver">⚠ 制限時間超過 ⚠</div><p class="muted">カウントダウン時間（変更すると計測はリセットされます）</p><div class="preset-row"><button class="preset active" data-duration="300000">5分</button><button class="preset" data-duration="600000">10分</button><button class="preset" data-duration="900000">15分</button><button class="preset" id="customPreset" type="button">カスタム</button></div><div id="customBox" class="hidden" style="margin-top:14px;padding:14px;border:1px solid #476184;border-radius:12px"><label for="customMinutes">分（0〜999）</label> <input id="customMinutes" type="number" min="0" max="999" step="1" inputmode="numeric" value="12" style="width:85px"> <label for="customSeconds">秒（0〜59）</label> <input id="customSeconds" type="number" min="0" max="59" step="1" inputmode="numeric" value="30" style="width:80px"><button id="applyCustom" class="primary" style="margin-top:10px;width:100%">この時間に設定</button><p id="customError" class="notice" role="alert"></p></div></section><section class="panel"><div class="actions"><button id="start" class="primary">START / 再開</button><button id="stop" class="danger">STOP</button><button id="reset" class="wide" style="grid-column:span 2">RESET</button></div><p id="actionMsg" class="muted note"></p></section><button id="exitControl">設定へ戻る</button></main>
+<main id="display" class="display hidden"><div class="top"><span id="displayStatus" class="status">未接続</span><button id="exitDisplay" style="padding:5px 9px;font-size:11px">設定へ</button></div><div class="segment"><div class="label">現在時刻</div><div class="clock time" id="nowClock">--:--:--</div></div><div class="segment"><div class="label" id="modeLabel">COUNTDOWN</div><div class="clock timer" id="bigClock">05:00</div><div class="smallnote" id="displayNote">ルーム未接続</div><div class="smallnote" id="displayDiag" style="font-size:10px;opacity:.7"></div></div></main>
+<main id="control" class="hidden"><div class="top"><h2>CONTROL</h2><span id="controlStatus" class="status">未接続</span></div><p class="muted">ルーム：<strong id="roomName">—</strong></p><section class="panel" id="timerPanel"><div class="label" id="controlMode">COUNTDOWN</div><div class="clock" id="controlClock" style="font-size:clamp(38px,11vw,65px);margin:15px 0">05:00</div><div class="notice hidden" id="controlOver">⚠ 制限時間超過 ⚠</div><p class="muted">カウントダウン時間（変更すると計測はリセットされます）</p><div class="preset-row"><button class="preset active" data-duration="300000">5分</button><button class="preset" data-duration="600000">10分</button><button class="preset" data-duration="900000">15分</button><button class="preset" id="customPreset" type="button">カスタム</button></div><div id="customBox" class="hidden" style="margin-top:14px;padding:14px;border:1px solid #476184;border-radius:12px"><label for="customMinutes">分（0〜999）</label> <input id="customMinutes" type="number" min="0" max="999" step="1" inputmode="numeric" value="12" style="width:85px"> <label for="customSeconds">秒（0〜59）</label> <input id="customSeconds" type="number" min="0" max="59" step="1" inputmode="numeric" value="30" style="width:80px"><button id="applyCustom" class="primary" style="margin-top:10px;width:100%">この時間に設定</button><p id="customError" class="notice" role="alert"></p></div></section><section class="panel"><div class="actions"><button id="start" class="primary">START / 再開</button><button id="stop" class="danger">STOP</button><button id="reset" class="wide" style="grid-column:span 2">RESET</button></div><p id="actionMsg" class="muted note"></p><p id="controlDiag" class="muted note" style="font-size:11px"></p></section><button id="exitControl">設定へ戻る</button></main>
 <script type="module">
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js';
 import {getAuth,signInAnonymously} from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js';
-import {getFirestore,doc,getDoc,setDoc,onSnapshot,runTransaction,serverTimestamp} from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js';
+import {getFirestore,doc,getDoc,getDocFromServer,setDoc,onSnapshot,runTransaction,serverTimestamp} from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js';
 const $=id=>document.getElementById(id), DEFAULT={mode:'down',duration:300000,elapsed:0,running:false,startedAt:0,revision:0,laps:[]};
 let db=null,auth=null,unsub=null,roomId='',state={...DEFAULT},lastSync=0,connected=false,screen='home',busy=false,clockOffset=0;
+let polling=false,activeGeneration=0,lastSource='—',lastRevision=-1,lastPollError='';
 const firebaseConfig = {
   apiKey: 'AIzaSyCY0GtNW8gOOkva3VjnRlHKH4y5xwYGvFk',
   authDomain: 'countdown-remote.firebaseapp.com',
@@ -26,7 +27,7 @@ const elapsed=()=>Math.max(0,(state.elapsed||0)+(state.running?Math.max(0,Date.n
 const remaining=()=>state.duration-elapsed();
 const isOver=()=>remaining()<0;
 const value=()=>isOver()?'+'+format(-remaining()):format(remaining());
-function render(){const date=new Date();$('nowClock').textContent=date.toLocaleTimeString('ja-JP',{hour12:false});const str=value();$('bigClock').textContent=str;$('controlClock').textContent=str;$('display').classList.toggle('overtime',isOver());$('timerPanel').classList.toggle('control-over',isOver());$('controlOver').classList.toggle('hidden',!isOver());$('modeLabel').textContent=isOver()?'⚠ TIME OVER ⚠':'COUNTDOWN';$('controlMode').textContent=isOver()?'⚠ TIME OVER ⚠':'COUNTDOWN';$('displayNote').textContent=!connected?'⚠ 通信未接続・最終状態で表示中':isOver()?'⚠ 制限時間超過 ⚠':state.running?'COUNTING DOWN':'STOPPED / READY';if(screen==='control'){$('start').disabled=!connected||busy||state.running;$('stop').disabled=!connected||busy||!state.running;$('reset').disabled=!connected||busy;for(const btn of document.querySelectorAll('.preset')){btn.classList.toggle('active',btn.id==='customPreset'?![300000,600000,900000].includes(state.duration):Number(btn.dataset.duration)===state.duration);btn.disabled=!connected||busy}}}
+function render(){const date=new Date();$('nowClock').textContent=date.toLocaleTimeString('ja-JP',{hour12:false});const str=value();$('bigClock').textContent=str;$('controlClock').textContent=str;$('display').classList.toggle('overtime',isOver());$('timerPanel').classList.toggle('control-over',isOver());$('controlOver').classList.toggle('hidden',!isOver());$('modeLabel').textContent=isOver()?'⚠ TIME OVER ⚠':'COUNTDOWN';$('controlMode').textContent=isOver()?'⚠ TIME OVER ⚠':'COUNTDOWN';const diag=`${roomId||'ルームなし'} / rev ${lastRevision} / ${lastSource} / 最終受信 ${lastSync?Math.floor((Date.now()-lastSync)/1000)+'秒前':'なし'}${lastPollError?' / '+lastPollError:''}`;$('displayDiag').textContent=diag;$('controlDiag').textContent=diag;$('displayNote').textContent=!connected?'⚠ 通信未接続・最終状態で表示中':isOver()?'⚠ 制限時間超過 ⚠':state.running?'COUNTING DOWN':'STOPPED / READY';if(screen==='control'){$('start').disabled=!connected||busy||state.running;$('stop').disabled=!connected||busy||!state.running;$('reset').disabled=!connected||busy;for(const btn of document.querySelectorAll('.preset')){btn.classList.toggle('active',btn.id==='customPreset'?![300000,600000,900000].includes(state.duration):Number(btn.dataset.duration)===state.duration);btn.disabled=!connected||busy}}}
 setInterval(render,40);document.addEventListener('visibilitychange',render);
 async function init(){
   try {
@@ -45,7 +46,69 @@ async function init(){
 }
 async function ensure(){if(db&&auth?.currentUser)return true;return await init()}
 function validRoom(){const id=$('room').value.trim().toUpperCase();if(!/^[A-Z0-9]{4,12}$/.test(id))throw Error('ルームIDは英数字4〜12文字にしてください');return id}
-async function connect(id){if(unsub)unsub();roomId=id;connected=false;status('接続中');localStorage.setItem('dualClockRoom',id);$('roomName').textContent=id;unsub=onSnapshot(doc(db,'rooms',id),snap=>{if(!snap.exists()){connected=false;status('ルームなし');return}const data=snap.data();state={...DEFAULT,...data};lastSync=Date.now();connected=true;status('同期中',true);$('roomMsg').textContent='接続済み：'+id;render()},e=>{connected=false;status('通信切断');$('roomMsg').textContent='通信エラー：'+e.message});}
+// Apply only newer revisions. Cached or delayed snapshots must never roll back the timer.
+function acceptSnapshot(snap, source, generation){
+  if(generation!==activeGeneration || !snap.exists()) return;
+  const data=snap.data();
+  const revision=Number(data.revision||0);
+  if(revision<lastRevision) return;
+  // Do not overwrite an already confirmed server state with a cached snapshot.
+  if(revision===lastRevision && snap.metadata?.fromCache) return;
+  state={...DEFAULT,...data};
+  lastRevision=revision;
+  lastSync=Date.now();
+  lastSource=source+(snap.metadata?.fromCache?' (cache)':'');
+  connected=true;
+  status('同期中',true);
+  $('roomMsg').textContent='接続済み：'+roomId;
+  render();
+}
+async function connect(id){
+  if(unsub){unsub();unsub=null;}
+  activeGeneration++;
+  const generation=activeGeneration;
+  roomId=id;connected=false;lastRevision=-1;lastSync=0;lastSource='—';
+  status('接続中');
+  localStorage.setItem('dualClockRoom',id);
+  $('roomName').textContent=id;
+  const ref=doc(db,'rooms',id);
+  unsub=onSnapshot(ref,{includeMetadataChanges:true},snap=>{
+    if(generation!==activeGeneration)return;
+    if(!snap.exists()){connected=false;status('ルームなし');return;}
+    acceptSnapshot(snap,'リアルタイム通知',generation);
+  },e=>{
+    if(generation!==activeGeneration)return;
+    // Server polling can still recover from a broken listener.
+    lastPollError='通知エラー: '+e.message;
+    status('通知エラー・再取得中');
+  });
+  // Independent server fetch avoids waiting for a delayed Safari listener.
+  await refreshFromServer(generation);
+}
+async function refreshFromServer(generation){
+  if(polling || !db || !roomId || document.hidden)return;
+  polling=true;
+  try{
+    const snap=await getDocFromServer(doc(db,'rooms',roomId));
+    if(generation!==activeGeneration)return;
+    lastPollError='';
+    acceptSnapshot(snap,'サーバー再取得',generation);
+  }catch(e){
+    if(generation===activeGeneration){lastPollError=e.message; if(!connected)status('再接続待ち');}
+  }finally{polling=false;}
+}
+// Display device checks the server every 2 seconds as a fallback.
+// This uses Firestore reads; leave the app closed when not in use.
+setInterval(()=>{
+  if(!roomId || !db || document.hidden)return;
+  const interval=screen==='display'?2000:5000;
+  if(Date.now()-(window._lastPollAt||0)<interval)return;
+  window._lastPollAt=Date.now();
+  refreshFromServer(activeGeneration);
+},1000);
+document.addEventListener('visibilitychange',()=>{
+  if(!document.hidden && roomId)refreshFromServer(activeGeneration);
+});
 $('create').onclick=async()=>{try{if(!await ensure())return;let id;for(let i=0;i<5;i++){id=Math.random().toString(36).slice(2,8).toUpperCase();const ref=doc(db,'rooms',id);if(!(await getDoc(ref)).exists()){await setDoc(ref,{...DEFAULT,createdAt:serverTimestamp(),updatedAt:serverTimestamp()});break}id=''}if(!id)throw Error('ルーム生成失敗');$('room').value=id;await connect(id)}catch(e){$('roomMsg').textContent=e.message}};
 $('join').onclick=async()=>{try{if(!await ensure())return;const id=validRoom();if(!(await getDoc(doc(db,'rooms',id))).exists())throw Error('ルームがありません');await connect(id)}catch(e){$('roomMsg').textContent=e.message}};
 $('goDisplay').onclick=()=>{show('display');render()};$('goControl').onclick=()=>{show('control');render()};$('exitDisplay').onclick=$('exitControl').onclick=()=>show('home');
@@ -54,5 +117,5 @@ $('customPreset').onclick=()=>{$('customBox').classList.toggle('hidden');$('cust
 $('applyCustom').onclick=()=>{const m=$('customMinutes').value.trim(),sec=$('customSeconds').value.trim();if(!/^\d+$/.test(m)||!/^\d+$/.test(sec)||Number(m)>999||Number(sec)>59||(Number(m)===0&&Number(sec)===0)){$('customError').textContent='分は0〜999、秒は0〜59、合計1秒以上にしてください。';return}const duration=(Number(m)*60+Number(sec))*1000;if(state.running&&!confirm('カスタム時間に変更すると計測をリセットします。よろしいですか？'))return;$('customError').textContent='';act('duration',duration)};
 for(const id of ['start','stop','reset'])$(id).onclick=()=>{if(id==='reset'&&!confirm('計測をリセットしますか？'))return;act(id)};
 async function act(type,arg){if(!db||!roomId||!connected||busy){$('actionMsg').textContent='通信未接続です。操作は送信されていません。';return}busy=true;$('actionMsg').textContent='送信中…';render();try{const ref=doc(db,'rooms',roomId);await runTransaction(db,async tx=>{const snap=await tx.get(ref);if(!snap.exists())throw Error('ルームがありません');const d={...DEFAULT,...snap.data()};const now=Date.now();const e=Math.max(0,d.elapsed+(d.running?now-d.startedAt:0));const next={};switch(type){case 'start':if(!d.running){next.running=true;next.startedAt=now;next.elapsed=e}break;case 'stop':if(d.running){next.running=false;next.elapsed=e;next.startedAt=0}break;case 'reset':next.running=false;next.elapsed=0;next.startedAt=0;next.laps=[];break;case 'duration':if(!Number.isInteger(arg)||arg<1000||arg>59999000||arg%1000!==0)throw Error('設定できる時間は1秒〜999分59秒です');next.duration=arg;next.running=false;next.elapsed=0;next.startedAt=0;next.laps=[];break;}tx.update(ref,{...next,revision:(d.revision||0)+1,updatedAt:serverTimestamp()})});$('actionMsg').textContent='送信完了';}catch(e){$('actionMsg').textContent='送信失敗（操作未確定）：'+e.message}finally{busy=false;render()}}
-if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});init().then(ok=>{if(ok&&$('room').value)$('join').click()})
+if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js?v=3').catch(()=>{});init().then(ok=>{if(ok&&$('room').value)$('join').click()})
 </script></body></html>
